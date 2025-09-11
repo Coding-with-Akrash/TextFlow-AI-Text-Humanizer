@@ -247,4 +247,5 @@ with st.expander("User Guide"):
 
 # About
 st.sidebar.markdown("---")
-st.sidebar.markdown("**AI Text Humanizer Pro**  \nVersion 2.0  \n© 2023 Text Humanizer Team")
+
+st.sidebar.markdown("**AI Text Humanizer Pro**  \nVersion 2.1.4  \n© 2025 Text Humanizer by Akrash Noor")
