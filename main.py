@@ -4,7 +4,7 @@ import re
 import io
 
 # Title with styling
-st.title("🧠 AI Text Humanizer Pro")
+st.title("🧠 TextFlow AI-Text Humanizer")
 st.markdown("### Transform AI-generated text into natural, human-like content")
 
 # Sidebar for options and settings
@@ -433,3 +433,4 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
