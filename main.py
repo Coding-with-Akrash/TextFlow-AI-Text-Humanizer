@@ -5,8 +5,11 @@ import nltk
 from nltk.tokenize import sent_tokenize
 import io
 
-# Download NLTK data
-nltk.download('punkt_tab', quiet=True)
+# Download NLTK data - more robust approach
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
 
 # Title
 st.title("AI Text Humanizer Pro")
@@ -141,7 +144,7 @@ def add_typos_to_sentence(sent):
 
 def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity):
     if not text.strip():
-        return "", 0, 0, 0, 0
+        return "", 0, 0, 0, 0, 0, 0
     
     stats = {
         'chars_before': len(text),
@@ -150,13 +153,20 @@ def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos
         'transformations': 0
     }
     
-    sents = sent_tokenize(text)
+    try:
+        sents = sent_tokenize(text)
+    except:
+        # Fallback if tokenization fails - split on periods
+        sents = [s.strip() + '.' for s in text.split('.') if s.strip()]
+    
     stats['sentences'] = len(sents)
     new_sents = []
     
     for s in sents:
         s = s.strip()
-        
+        if not s:
+            continue
+            
         if use_contractions:
             s = apply_contractions(s)
             stats['transformations'] += 1
@@ -247,5 +257,4 @@ with st.expander("User Guide"):
 
 # About
 st.sidebar.markdown("---")
-
 st.sidebar.markdown("**AI Text Humanizer Pro**  \nVersion 2.1.4  \n© 2025 Text Humanizer by Akrash Noor")
