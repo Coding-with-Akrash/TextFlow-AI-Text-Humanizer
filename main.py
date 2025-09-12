@@ -1,291 +1,432 @@
 import streamlit as st
 import random
 import re
-import nltk
-from nltk.tokenize import sent_tokenize
 import io
 
-# Download NLTK data
-nltk.download('punkt_tab', quiet=True)
-
-# Title
-st.title("AI Text Humanizer Pro")
+# Title with styling
+st.title("🧠 AI Text Humanizer Pro")
+st.markdown("### Transform AI-generated text into natural, human-like content")
 
 # Sidebar for options and settings
-st.sidebar.header("Transformation Options")
+st.sidebar.header("🎛️ Transformation Options")
 
-# Checkboxes
-use_contractions = st.sidebar.checkbox("Contractions", value=True)
-use_fillers = st.sidebar.checkbox("Fillers", value=True)
-use_colloquial = st.sidebar.checkbox("Colloquial", value=True)
-use_typos = st.sidebar.checkbox("Typos", value=False)
+# Checkboxes with emojis
+use_contractions = st.sidebar.checkbox("🤝 Contractions", value=True)
+use_fillers = st.sidebar.checkbox("🗣️ Fillers & Pauses", value=True)
+use_colloquial = st.sidebar.checkbox("💬 Colloquial Language", value=True)
+use_typos = st.sidebar.checkbox("⌨️ Typos & Imperfections", value=False)
+use_emojis = st.sidebar.checkbox("😊 Emojis & Expressions", value=True)
+use_sentence_variety = st.sidebar.checkbox("📝 Sentence Variety", value=True)
 
 # Tone selection
-tone = st.sidebar.selectbox("Tone", ["casual", "friendly", "professional", "academic", "conversational"], index=0)
+tone = st.sidebar.selectbox("🎭 Tone Style", 
+                           ["casual", "friendly", "professional", "academic", "conversational", "enthusiastic"], 
+                           index=1)
 
-# Intensity slider
-intensity = st.sidebar.slider("Intensity", 0, 100, 50)
+# Intensity slider with description
+intensity = st.sidebar.slider("🔥 Transformation Intensity", 0, 100, 70)
+st.sidebar.caption(f"Intensity: {intensity}% - Higher = more dramatic changes")
 
 # Custom replacements section
-st.sidebar.header("Custom Word Replacements")
+st.sidebar.header("🔧 Custom Word Replacements")
 if 'custom_replacements' not in st.session_state:
     st.session_state.custom_replacements = {}
 
 # Display current replacements
 if st.session_state.custom_replacements:
-    st.sidebar.write("Current Replacements:")
+    st.sidebar.write("**Current Replacements:**")
     for orig, repl in st.session_state.custom_replacements.items():
-        st.sidebar.write(f"{orig} → {repl}")
-        if st.sidebar.button(f"Remove {orig}", key=f"rem_{orig}"):
+        st.sidebar.write(f"`{orig}` → `{repl}`")
+        if st.sidebar.button(f"❌ Remove {orig}", key=f"rem_{orig}"):
             del st.session_state.custom_replacements[orig]
             st.rerun()
 
 # Add new replacement
 with st.sidebar:
+    st.write("**Add New Replacement:**")
     col1, col2 = st.columns(2)
     with col1:
-        original = st.text_input("Original:")
+        original = st.text_input("Original word:", key="orig_input")
     with col2:
-        replacement = st.text_input("Replacement:")
-    if st.button("Add Replacement") and original and replacement:
-        st.session_state.custom_replacements[original.strip()] = replacement.strip()
+        replacement = st.text_input("Replacement:", key="repl_input")
+    if st.button("➕ Add Replacement") and original and replacement:
+        st.session_state.custom_replacements[original.strip().lower()] = replacement.strip()
         st.rerun()
 
-# Removal options
-st.sidebar.header("Removal Options")
-remove_emojis = st.sidebar.checkbox("Remove Emojis", value=True)
-unwanted_input = st.sidebar.text_area(
-    "Unwanted words (comma-separated):",
-    "delve, testament, tapestry, realm, beacon, navigate, moreover, furthermore",
-    height=60,
-    key="unwanted"
-)
-
-# Default transformations
+# Enhanced transformations
 CONTRACTIONS = {
-    "do not": "don't", "does not": "doesn't", "did not": "didn't",
-    "cannot": "can't", "will not": "won't", "is not": "isn't",
-    "are not": "aren't", "I am": "I'm", "I have": "I've",
-    "we are": "we're", "you are": "you're", "it is": "it's",
-    "they are": "they're", "that is": "that's", "there is": "there's",
-    "what is": "what's", "where is": "where's", "who is": "who's",
-    "how is": "how's", "why is": "why's", "let us": "let's"
+    "do not": "don't", "does not": "doesn't", "did not": "didn't", "have not": "haven't",
+    "cannot": "can't", "will not": "won't", "is not": "isn't", "are not": "aren't",
+    "was not": "wasn't", "were not": "weren't", "has not": "hasn't", "had not": "hadn't",
+    "would not": "wouldn't", "could not": "couldn't", "should not": "shouldn't",
+    "I am": "I'm", "I have": "I've", "I will": "I'll", "I would": "I'd",
+    "you are": "you're", "you have": "you've", "you will": "you'll", "you would": "you'd",
+    "we are": "we're", "we have": "we've", "we will": "we'll", "we would": "we'd",
+    "they are": "they're", "they have": "they've", "they will": "they'll", "they would": "they'd",
+    "that is": "that's", "there is": "there's", "what is": "what's", "where is": "where's",
+    "who is": "who's", "how is": "how's", "why is": "why's", "when is": "when's",
+    "it is": "it's", "it has": "it's", "let us": "let's", "going to": "gonna",
+    "want to": "wanna", "got to": "gotta", "kind of": "kinda", "sort of": "sorta"
 }
 
-FILLERS = ["you know", "like", "I mean", "to be honest", "actually", 
-           "kind of", "sort of", "well", "basically", "literally"]
+FILLERS = [
+    "you know", "like", "I mean", "to be honest", "actually", "basically",
+    "literally", "seriously", "honestly", "well", "so", "um", "uh", "ah",
+    "right", "okay", "anyway", "sort of", "kind of", "I guess", "I suppose"
+]
+
+PAUSES = [", you know,", ", like,", ", I mean,", ", actually,", ", basically,", ", well,"]
 
 COLLOQUIAL = {
-    "very": "super", "extremely": "super",
-    "children": "kids", "purchase": "buy",
-    "help": "give a hand", "important": "kind of a big deal",
-    "automobile": "car", "residence": "place",
-    "utilize": "use", "individual": "person",
-    "commence": "start", "terminate": "end",
-    "sufficient": "enough", "inquire": "ask"
+    "very": "super", "extremely": "incredibly", "quite": "pretty",
+    "children": "kids", "purchase": "buy", "acquire": "get",
+    "assist": "help", "aid": "help", "support": "back up",
+    "important": "big deal", "crucial": "key", "essential": "must-have",
+    "automobile": "car", "vehicle": "ride", "residence": "place",
+    "domicile": "home", "utilize": "use", "employ": "use",
+    "individual": "person", "person": "guy/gal", "commence": "start",
+    "initiate": "kick off", "terminate": "end", "conclude": "wrap up",
+    "sufficient": "enough", "adequate": "plenty", "inquire": "ask",
+    "question": "ask about", "request": "ask for", "require": "need",
+    "necessitate": "call for", "demonstrate": "show", "illustrate": "show",
+    "approximately": "about", "circa": "around", "multiple": "several",
+    "numerous": "a bunch of", "difficult": "tough", "challenging": "hard",
+    "complicated": "tricky", "expensive": "pricey", "costly": "spendy",
+    "beautiful": "gorgeous", "attractive": "good-looking", "intelligent": "smart",
+    "brilliant": "sharp", "excellent": "awesome", "outstanding": "amazing"
+}
+
+EMOJIS_BY_TONE = {
+    "casual": ["😊", "👍", "😎", "🤔", "😅", "👌", "🙂", "😁"],
+    "friendly": ["😊", "❤️", "👍", "🙏", "😍", "🤗", "🌟", "🎉"],
+    "professional": ["✅", "📊", "📈", "💼", "🎯", "⚡", "🔍", "📋"],
+    "academic": ["📚", "🔬", "📖", "🎓", "✏️", "📝", "🔍", "💡"],
+    "conversational": ["💬", "🗣️", "👥", "🎭", "😊", "🤝", "👋", "🙂"],
+    "enthusiastic": ["🔥", "🚀", "💥", "🎊", "⭐", "😍", "🤩", "🌟"]
 }
 
 TONE_TRANSFORMATIONS = {
+    "casual": {
+        "hello": "hey", "hi": "hey", "thank you": "thanks", "thanks": "thx",
+        "goodbye": "bye", "please": "pls", "because": "'cause", "about": "'bout",
+        "going to": "gonna", "want to": "wanna", "got to": "gotta"
+    },
     "friendly": {
-        "hello": "hey there",
-        "thank you": "thanks a bunch",
-        "sorry": "my bad",
-        "goodbye": "see ya"
+        "hello": "hey there", "hi": "hello friend", "thank you": "thanks a bunch",
+        "sorry": "my bad", "goodbye": "see ya later", "please": "if you don't mind",
+        "great": "awesome", "excellent": "fantastic", "good": "wonderful"
     },
     "professional": {
-        "like": "such as",
-        "a lot": "considerably",
-        "stuff": "materials",
-        "thing": "item"
+        "like": "such as", "a lot": "significantly", "lots of": "numerous",
+        "stuff": "materials", "thing": "element", "get": "obtain",
+        "make sure": "ensure", "help": "assist", "use": "utilize"
     },
     "academic": {
-        "find out": "determine",
-        "look at": "examine",
-        "get": "obtain",
-        "make sure": "ensure"
+        "find out": "determine", "look at": "examine", "get": "acquire",
+        "make sure": "verify", "think": "postulate", "show": "demonstrate",
+        "big": "substantial", "small": "minimal", "change": "modify"
+    },
+    "conversational": {
+        "however": "but", "therefore": "so", "furthermore": "also",
+        "moreover": "plus", "thus": "so", "consequently": "as a result",
+        "nevertheless": "still", "although": "though"
+    },
+    "enthusiastic": {
+        "good": "AMAZING", "great": "FANTASTIC", "excellent": "PHENOMENAL",
+        "interesting": "FASCINATING", "important": "CRUCIAL", "exciting": "THRILLING",
+        "beautiful": "STUNNING", "fun": "BLAST"
     }
 }
 
-def apply_contractions(s):
-    for k, v in CONTRACTIONS.items():
-        s = re.sub(r'\b' + re.escape(k) + r'\b', v, s, flags=re.IGNORECASE)
-    return s
+def apply_contractions(text):
+    """Apply contractions with high visibility"""
+    for formal, casual in CONTRACTIONS.items():
+        text = re.sub(r'\b' + re.escape(formal) + r'\b', casual, text, flags=re.IGNORECASE)
+    return text
 
-def insert_fillers(sent):
-    if random.random() < (0.25 * intensity / 100):
-        filler = random.choice(FILLERS)
-        if random.random() < 0.5:
-            return f"{filler}, {sent}"
-        else:
-            parts = sent.rsplit(',', 1)
-            if len(parts) > 1:
-                return f"{parts[0]}, {filler}, {parts[1]}"
-            else:
-                return f"{sent}, {filler}"
-    return sent
+def insert_fillers_and_pauses(text):
+    """Insert fillers and pauses for natural speech patterns"""
+    sentences = text.split('. ')
+    transformed_sentences = []
+    
+    for sentence in sentences:
+        if sentence and random.random() < (0.4 * intensity / 100):
+            # Add filler at beginning
+            if random.random() < 0.3:
+                sentence = random.choice(FILLERS).title() + ", " + sentence.lower()
+            
+            # Add pause in middle
+            words = sentence.split()
+            if len(words) > 4 and random.random() < 0.4:
+                pause_pos = random.randint(2, len(words) - 2)
+                words.insert(pause_pos, random.choice(PAUSES))
+                sentence = ' '.join(words)
+            
+            # Add filler at end
+            if random.random() < 0.2:
+                sentence = sentence + " " + random.choice(FILLERS) + "."
+        
+        transformed_sentences.append(sentence)
+    
+    return '. '.join(transformed_sentences)
 
-def colloquialize(sent):
+def colloquialize(text):
+    """Make text more colloquial and casual"""
     all_replacements = {**COLLOQUIAL, **st.session_state.custom_replacements}
-    for k, v in all_replacements.items():
-        sent = re.sub(r'\b' + re.escape(k) + r'\b', v, sent, flags=re.IGNORECASE)
-    return sent
+    for formal, casual in all_replacements.items():
+        text = re.sub(r'\b' + re.escape(formal) + r'\b', casual, text, flags=re.IGNORECASE)
+    return text
 
-def apply_tone_specific(sent, tone):
+def apply_tone_specific(text, tone):
+    """Apply tone-specific transformations"""
     if tone in TONE_TRANSFORMATIONS:
-        for k, v in TONE_TRANSFORMATIONS[tone].items():
-            sent = re.sub(r'\b' + re.escape(k) + r'\b', v, sent, flags=re.IGNORECASE)
-    return sent
+        for formal, casual in TONE_TRANSFORMATIONS[tone].items():
+            text = re.sub(r'\b' + re.escape(formal) + r'\b', casual, text, flags=re.IGNORECASE)
+    return text
 
-def maybe_typo(word):
-    if len(word) > 3 and random.random() < (0.03 * intensity / 100):
-        i = random.randint(0, len(word)-2)
-        l = list(word)
-        l[i], l[i+1] = l[i+1], l[i]
-        return ''.join(l)
-    return word
-
-def add_typos_to_sentence(sent):
-    words = sent.split()
-    words = [maybe_typo(w) for w in words]
+def add_typos(text):
+    """Add realistic typos and imperfections"""
+    if intensity < 20:
+        return text
+    
+    words = text.split()
+    for i in range(len(words)):
+        if random.random() < (0.08 * intensity / 100) and len(words[i]) > 3:
+            word = words[i]
+            # Different types of typos
+            typo_type = random.choice(['swap', 'double', 'omit', 'wrong_char', 'caps'])
+            
+            if typo_type == 'swap' and len(word) > 3:
+                pos = random.randint(0, len(word)-2)
+                words[i] = word[:pos] + word[pos+1] + word[pos] + word[pos+2:]
+            
+            elif typo_type == 'double' and len(word) > 2:
+                pos = random.randint(1, len(word)-1)
+                words[i] = word[:pos] + word[pos] + word[pos:]
+            
+            elif typo_type == 'omit' and len(word) > 3:
+                pos = random.randint(1, len(word)-2)
+                words[i] = word[:pos] + word[pos+1:]
+            
+            elif typo_type == 'wrong_char' and len(word) > 2:
+                pos = random.randint(1, len(word)-1)
+                wrong_char = random.choice('abcdefghijklmnopqrstuvwxyz')
+                words[i] = word[:pos] + wrong_char + word[pos+1:]
+            
+            elif typo_type == 'caps':
+                words[i] = word.upper() if word.islower() else word.lower()
+    
     return ' '.join(words)
 
+def add_emojis(text, tone):
+    """Add emojis based on tone and content"""
+    if not use_emojis:
+        return text
+    
+    emoji_chance = 0.3 * intensity / 100
+    sentences = text.split('. ')
+    
+    for i in range(len(sentences)):
+        if random.random() < emoji_chance and sentences[i].strip():
+            emoji = random.choice(EMOJIS_BY_TONE.get(tone, ["😊"]))
+            sentences[i] = sentences[i] + " " + emoji
+    
+    return '. '.join(sentences)
 
-def remove_emojis(text):
-    emoji_pattern = re.compile("["
-        "\U0001F600-\U0001F64F",  # emoticons
-        "\U0001F300-\U0001F5FF",  # symbols & pictographs
-        "\U0001F680-\U0001F6FF",  # transport & map symbols
-        "\U0001F1E0-\U0001F1FF",  # flags (iOS)
-        "\U00002702-\U000027B0",
-        "\U000024C2-\U0001F251"
-        "]+", flags=re.UNICODE)
-    return emoji_pattern.sub(r'', text)
+def vary_sentence_structure(text):
+    """Add variety to sentence structure"""
+    if not use_sentence_variety:
+        return text
+    
+    sentences = text.split('. ')
+    varied_sentences = []
+    
+    for sentence in sentences:
+        if sentence.strip():
+            # Sometimes start with conjunction for casual flow
+            if random.random() < 0.2 and tone in ["casual", "friendly", "conversational"]:
+                conjunctions = ["And", "But", "So", "Well", "Anyway", "Actually"]
+                sentence = random.choice(conjunctions) + " " + sentence.lower()
+            
+            # Add rhetorical questions
+            if random.random() < 0.15 and "?" not in sentence:
+                question_words = ["Right?", "You know?", "See?", "Get it?"]
+                sentence = sentence + " " + random.choice(question_words)
+            
+            varied_sentences.append(sentence)
+    
+    return '. '.join(varied_sentences)
 
-def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity, remove_emojis=False, unwanted_words=""):
+def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity):
+    """Main humanization function with visible transformations"""
     if not text.strip():
         return "", 0, 0, 0, 0, 0, 0
     
-    stats = {
-        'chars_before': len(text),
-        'words_before': len(text.split()),
-        'sentences': 0,
-        'transformations': 0
-    }
+    original_text = text
+    transformations = 0
     
-    text = text.strip()
+    # Apply transformations in sequence
+    if use_contractions:
+        new_text = apply_contractions(text)
+        if new_text != text:
+            transformations += 1
+        text = new_text
     
-    if remove_emojis:
-        text = remove_emojis(text)
-        stats['transformations'] += 1
+    if use_colloquial:
+        new_text = colloquialize(text)
+        if new_text != text:
+            transformations += 1
+        text = new_text
     
-    if unwanted_words:
-        words_to_remove = [w.strip().lower() for w in unwanted_words.split(',') if w.strip()]
-        removed_count = 0
-        for word in words_to_remove:
-            pattern = r'\b' + re.escape(word) + r'\b'
-            old_len = len(text)
-            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
-            if len(text) < old_len:
-                removed_count += 1
-        if removed_count > 0:
-            text = re.sub(r'\s+', ' ', text).strip()
-            stats['transformations'] += 1
+    text = apply_tone_specific(text, tone)
     
-    sents = sent_tokenize(text)
-    stats['sentences'] = len(sents)
-    new_sents = []
+    if use_fillers:
+        new_text = insert_fillers_and_pauses(text)
+        if new_text != text:
+            transformations += 1
+        text = new_text
     
-    for s in sents:
-        s = s.strip()
-        
-        if use_contractions:
-            s = apply_contractions(s)
-            stats['transformations'] += 1
-        
-        if use_colloquial:
-            s = colloquialize(s)
-            stats['transformations'] += 1
-        
-        s = apply_tone_specific(s, tone)
-        
-        if use_fillers:
-            s = insert_fillers(s)
-            stats['transformations'] += 1
-        
-        if tone == "friendly" and random.random() < 0.5 and not remove_emojis:
-            s = s + " 🙂"
-        elif tone == "professional":
-            s = s.replace("like", "such as")
-        
-        if use_typos:
-            s = add_typos_to_sentence(s)
-            stats['transformations'] += 1
-        
-        new_sents.append(s)
+    if use_typos:
+        new_text = add_typos(text)
+        if new_text != text:
+            transformations += 1
+        text = new_text
     
-    # Join short sentences occasionally
-    out = []
-    i = 0
-    while i < len(new_sents):
-        if i+1 < len(new_sents) and random.random() < 0.2:
-            out.append(new_sents[i].rstrip('.') + ', ' + new_sents[i+1].lower())
-            i += 2
-        else:
-            out.append(new_sents[i])
-            i += 1
+    if use_emojis:
+        new_text = add_emojis(text, tone)
+        if new_text != text:
+            transformations += 1
+        text = new_text
     
-    result = ' '.join(out)
-    stats['chars_after'] = len(result)
-    stats['words_after'] = len(result.split())
+    if use_sentence_variety:
+        new_text = vary_sentence_structure(text)
+        if new_text != text:
+            transformations += 1
+        text = new_text
     
-    return result, stats['chars_before'], stats['chars_after'], stats['words_before'], stats['words_after'], stats['sentences'], stats['transformations']
+    # Count statistics
+    chars_before = len(original_text)
+    chars_after = len(text)
+    words_before = len(original_text.split())
+    words_after = len(text.split())
+    sentences_before = len(original_text.split('. '))
+    sentences_after = len(text.split('. '))
+    
+    return text, chars_before, chars_after, words_before, words_after, sentences_before, transformations
 
-# File upload
-uploaded_file = st.file_uploader("Choose a text file", type=['txt'])
+# Main content area
+st.header("📝 Input Text")
+uploaded_file = st.file_uploader("Choose a text file", type=['txt'], help="Upload a .txt file or type directly below")
 
 if uploaded_file is not None:
     input_text = io.StringIO(uploaded_file.getvalue().decode()).read()
 else:
-    input_text = st.text_area("Enter text to humanize:", height=200, key="input")
+    input_text = st.text_area("Enter AI-generated text to humanize:", 
+                             height=150, 
+                             placeholder="Paste your formal or AI-generated text here...",
+                             help="The more formal the input, the more dramatic the transformation!")
 
-if st.button("Humanize Text"):
+# Humanize button with styling
+if st.button("🚀 Humanize Text", type="primary", use_container_width=True):
     if input_text.strip():
-        result, chars_before, chars_after, words_before, words_after, sentences, transformations = humanize_text(
-            input_text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity, remove_emojis, unwanted_input
-        )
+        with st.spinner("Transforming text... This might take a moment"):
+            result, chars_before, chars_after, words_before, words_after, sentences, transformations = humanize_text(
+                input_text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity
+            )
         
-        st.text_area("Humanized Text:", value=result, height=200, key="output")
+        st.header("🎉 Humanized Output")
         
-        # Stats
+        # Create two columns for comparison
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📋 Original Text")
+            st.text_area("", value=input_text, height=200, key="original_output", label_visibility="collapsed")
+        
+        with col2:
+            st.subheader("✨ Humanized Text")
+            st.text_area("", value=result, height=200, key="humanized_output", label_visibility="collapsed")
+        
+        # Statistics with emojis
+        st.header("📊 Transformation Statistics")
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Characters", f"{chars_before} → {chars_after}")
-        col2.metric("Words", f"{words_before} → {words_after}")
-        col3.metric("Sentences", sentences)
-        col4.metric("Transformations", transformations)
+        
+        col1.metric("📝 Characters", f"{chars_before} → {chars_after}", f"{chars_after - chars_before:+d}")
+        col2.metric("📋 Words", f"{words_before} → {words_after}", f"{words_after - words_before:+d}")
+        col3.metric("🔤 Sentences", sentences)
+        col4.metric("🔄 Transformations", transformations)
         
         # Download button
         st.download_button(
-            label="Download Humanized Text",
+            label="📥 Download Humanized Text",
             data=result,
             file_name="humanized_text.txt",
-            mime="text/plain"
+            mime="text/plain",
+            use_container_width=True
         )
+        
+        # Show transformation highlights
+        st.header("🌟 Transformation Highlights")
+        st.info("""
+        **Visible changes applied:**
+        - 🤝 Contractions added for casual flow
+        - 🗣️ Natural fillers and pauses inserted
+        - 💬 Formal language made conversational
+        - 🎭 Tone-specific vocabulary applied
+        - 😊 Emojis added for emotional expression
+        - 📝 Sentence structure varied for natural rhythm
+        """)
+        
     else:
-        st.warning("Please enter some text to humanize.")
+        st.warning("⚠️ Please enter some text to humanize.")
 
-# Help section
-with st.expander("User Guide"):
+# Help section with expander
+with st.expander("📖 User Guide & Tips"):
     st.markdown("""
-    1. Paste your AI-generated text into the input area or upload a file.
-    2. Select transformation options in the sidebar.
-    3. Choose a tone and adjust intensity.
-    4. Add custom word replacements if needed.
-    5. Click "Humanize Text" to transform.
-    6. Download the result.
+    ## 🎯 How to Get Perfect Visible Changes
     
-    Advanced: Custom replacements persist during the session.
+    **1. Start with formal AI text** - The more formal the input, the more dramatic the transformation!
+    
+    **2. Adjust Intensity** - Higher intensity (70-100) = more visible changes
+    
+    **3. Combine multiple options** - Use Contractions + Fillers + Colloquial for maximum effect
+    
+    **4. Choose the right tone**:
+    - 🎭 **Casual**: Very informal, like texting a friend
+    - 😊 **Friendly**: Warm and approachable with emojis
+    - 💼 **Professional**: Polished but natural business language
+    - 📚 **Academic**: Scholarly but readable
+    - 💬 **Conversational**: Natural speaking patterns
+    - 🔥 **Enthusiastic**: Excited and energetic
+    
+    **5. Add custom replacements** for domain-specific terms
+    
+    **Example transformation**:
+    - **Input**: "The utilization of this methodology will facilitate the optimization process."
+    - **Output**: "So, using this method will basically help optimize things, you know? 👍"
     """)
 
-# About
+# About section
 st.sidebar.markdown("---")
-st.sidebar.markdown("**AI Text Humanizer Pro**  \nVersion 2.0  \n© 2023 Text Humanizer Team")
+st.sidebar.markdown("""
+**🧠 AI Text Humanizer Pro**  
+*Version 3.0*  
+**© 2025 Text Humanizer by Akrash Noor**
+
+Transform robotic AI text into natural, human-sounding content with visible, dramatic changes!
+""")
+
+# Add some styling
+st.markdown("""
+<style>
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        font-weight: bold;
+    }
+    .stDownloadButton>button {
+        background-color: #2196F3;
+        color: white;
+    }
+</style>
+""", unsafe_allow_html=True)
