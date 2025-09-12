@@ -5,11 +5,8 @@ import nltk
 from nltk.tokenize import sent_tokenize
 import io
 
-# Download NLTK data - more robust approach
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
+# Download NLTK data
+nltk.download('punkt_tab', quiet=True)
 
 # Title
 st.title("AI Text Humanizer Pro")
@@ -53,6 +50,16 @@ with st.sidebar:
     if st.button("Add Replacement") and original and replacement:
         st.session_state.custom_replacements[original.strip()] = replacement.strip()
         st.rerun()
+
+# Removal options
+st.sidebar.header("Removal Options")
+remove_emojis = st.sidebar.checkbox("Remove Emojis", value=True)
+unwanted_input = st.sidebar.text_area(
+    "Unwanted words (comma-separated):",
+    "delve, testament, tapestry, realm, beacon, navigate, moreover, furthermore",
+    height=60,
+    key="unwanted"
+)
 
 # Default transformations
 CONTRACTIONS = {
@@ -142,7 +149,19 @@ def add_typos_to_sentence(sent):
     words = [maybe_typo(w) for w in words]
     return ' '.join(words)
 
-def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity):
+
+def remove_emojis(text):
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F",  # emoticons
+        u"\U0001F300-\U0001F5FF",  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF",  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF",  # flags (iOS)
+        u"\U00002702-\U000027B0",
+        u"\U000024C2-\U0001F251"
+        "]+", flags=re.UNICODE)
+    return emoji_pattern.sub(r'', text)
+
+def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity, remove_emojis=False, unwanted_words=""):
     if not text.strip():
         return "", 0, 0, 0, 0, 0, 0
     
@@ -153,20 +172,32 @@ def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos
         'transformations': 0
     }
     
-    try:
-        sents = sent_tokenize(text)
-    except:
-        # Fallback if tokenization fails - split on periods
-        sents = [s.strip() + '.' for s in text.split('.') if s.strip()]
+    text = text.strip()
     
+    if remove_emojis:
+        text = remove_emojis(text)
+        stats['transformations'] += 1
+    
+    if unwanted_words:
+        words_to_remove = [w.strip().lower() for w in unwanted_words.split(',') if w.strip()]
+        removed_count = 0
+        for word in words_to_remove:
+            pattern = r'\b' + re.escape(word) + r'\b'
+            old_len = len(text)
+            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+            if len(text) < old_len:
+                removed_count += 1
+        if removed_count > 0:
+            text = re.sub(r'\s+', ' ', text).strip()
+            stats['transformations'] += 1
+    
+    sents = sent_tokenize(text)
     stats['sentences'] = len(sents)
     new_sents = []
     
     for s in sents:
         s = s.strip()
-        if not s:
-            continue
-            
+        
         if use_contractions:
             s = apply_contractions(s)
             stats['transformations'] += 1
@@ -181,7 +212,7 @@ def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos
             s = insert_fillers(s)
             stats['transformations'] += 1
         
-        if tone == "friendly" and random.random() < 0.5:
+        if tone == "friendly" and random.random() < 0.5 and not remove_emojis:
             s = s + " 🙂"
         elif tone == "professional":
             s = s.replace("like", "such as")
@@ -220,7 +251,7 @@ else:
 if st.button("Humanize Text"):
     if input_text.strip():
         result, chars_before, chars_after, words_before, words_after, sentences, transformations = humanize_text(
-            input_text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity
+            input_text, use_contractions, use_fillers, use_colloquial, use_typos, tone, intensity, remove_emojis, unwanted_input
         )
         
         st.text_area("Humanized Text:", value=result, height=200, key="output")
@@ -257,4 +288,4 @@ with st.expander("User Guide"):
 
 # About
 st.sidebar.markdown("---")
-st.sidebar.markdown("**AI Text Humanizer Pro**  \nVersion 2.1.4  \n© 2025 Text Humanizer by Akrash Noor")
+st.sidebar.markdown("**AI Text Humanizer Pro**  \nVersion 2.0  \n© 2023 Text Humanizer Team")
