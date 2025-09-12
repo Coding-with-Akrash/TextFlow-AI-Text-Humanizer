@@ -146,14 +146,17 @@ def apply_contractions(text):
 
 def insert_fillers_and_pauses(text):
     """Insert fillers and pauses for natural speech patterns"""
-    sentences = text.split('. ')
+    if not text.strip():
+        return text
+        
+    sentences = [s.strip() for s in text.split('.') if s.strip()]
     transformed_sentences = []
     
     for sentence in sentences:
         if sentence and random.random() < (0.4 * intensity / 100):
             # Add filler at beginning
             if random.random() < 0.3:
-                sentence = random.choice(FILLERS).title() + ", " + sentence.lower()
+                sentence = random.choice(FILLERS).title() + ", " + sentence[0].lower() + sentence[1:]
             
             # Add pause in middle
             words = sentence.split()
@@ -164,7 +167,7 @@ def insert_fillers_and_pauses(text):
             
             # Add filler at end
             if random.random() < 0.2:
-                sentence = sentence + " " + random.choice(FILLERS) + "."
+                sentence = sentence + " " + random.choice(FILLERS)
         
         transformed_sentences.append(sentence)
     
@@ -224,10 +227,10 @@ def add_emojis(text, tone):
         return text
     
     emoji_chance = 0.3 * intensity / 100
-    sentences = text.split('. ')
+    sentences = [s.strip() for s in text.split('.') if s.strip()]
     
     for i in range(len(sentences)):
-        if random.random() < emoji_chance and sentences[i].strip():
+        if random.random() < emoji_chance and sentences[i]:
             emoji = random.choice(EMOJIS_BY_TONE.get(tone, ["😊"]))
             sentences[i] = sentences[i] + " " + emoji
     
@@ -238,15 +241,15 @@ def vary_sentence_structure(text):
     if not use_sentence_variety:
         return text
     
-    sentences = text.split('. ')
+    sentences = [s.strip() for s in text.split('.') if s.strip()]
     varied_sentences = []
     
     for sentence in sentences:
-        if sentence.strip():
+        if sentence:
             # Sometimes start with conjunction for casual flow
             if random.random() < 0.2 and tone in ["casual", "friendly", "conversational"]:
                 conjunctions = ["And", "But", "So", "Well", "Anyway", "Actually"]
-                sentence = random.choice(conjunctions) + " " + sentence.lower()
+                sentence = random.choice(conjunctions) + " " + sentence[0].lower() + sentence[1:]
             
             # Add rhetorical questions
             if random.random() < 0.15 and "?" not in sentence:
@@ -309,8 +312,8 @@ def humanize_text(text, use_contractions, use_fillers, use_colloquial, use_typos
     chars_after = len(text)
     words_before = len(original_text.split())
     words_after = len(text.split())
-    sentences_before = len(original_text.split('. '))
-    sentences_after = len(text.split('. '))
+    sentences_before = len([s for s in original_text.split('.') if s.strip()])
+    sentences_after = len([s for s in text.split('.') if s.strip()])
     
     return text, chars_before, chars_after, words_before, words_after, sentences_before, transformations
 
