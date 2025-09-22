@@ -413,7 +413,7 @@ with st.expander("📖 User Guide & Tips"):
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
 **🧠 AI Text Humanizer Pro**  
-*Version 3.0*  
+*Version 2.7.3*  
 **© 2025 Text Humanizer by Akrash Noor**
 
 Transform robotic AI text into natural, human-sounding content with visible, dramatic changes!
@@ -433,4 +433,5 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
 
