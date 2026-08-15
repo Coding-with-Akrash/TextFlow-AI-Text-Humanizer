@@ -3,14 +3,11 @@ import random
 import re
 import io
 
-# Title with styling
 st.title("🧠 TextFlow AI-Text Humanizer")
 st.markdown("### Transform AI-generated text into natural, human-like content")
 
-# Sidebar for options and settings
 st.sidebar.header("🎛️ Transformation Options")
 
-# Checkboxes with emojis
 use_contractions = st.sidebar.checkbox("🤝 Contractions", value=True)
 use_fillers = st.sidebar.checkbox("🗣️ Fillers & Pauses", value=True)
 use_colloquial = st.sidebar.checkbox("💬 Colloquial Language", value=True)
@@ -18,16 +15,13 @@ use_typos = st.sidebar.checkbox("⌨️ Typos & Imperfections", value=False)
 use_emojis = st.sidebar.checkbox("😊 Emojis & Expressions", value=True)
 use_sentence_variety = st.sidebar.checkbox("📝 Sentence Variety", value=True)
 
-# Tone selection
 tone = st.sidebar.selectbox("🎭 Tone Style", 
                            ["casual", "friendly", "professional", "academic", "conversational", "enthusiastic"], 
                            index=1)
 
-# Intensity slider with description
 intensity = st.sidebar.slider("🔥 Transformation Intensity", 0, 100, 70)
 st.sidebar.caption(f"Intensity: {intensity}% - Higher = more dramatic changes")
 
-# Custom replacements section
 st.sidebar.header("🔧 Custom Word Replacements")
 if 'custom_replacements' not in st.session_state:
     st.session_state.custom_replacements = {}
